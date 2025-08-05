@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .db import Base
 
@@ -7,7 +7,7 @@ class PLC(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
-    ip_address = Column(String, nullable=False)
+    ip_address = Column(String, unique=True, nullable=False)  # Make IP unique
     port = Column(Integer, nullable=False)
     protocol = Column(String, nullable=False)
     active = Column(Boolean, default=True)
@@ -25,6 +25,10 @@ class Tag(Base):
     plc_id = Column(Integer, ForeignKey("plcs.id", ondelete="CASCADE"), index=True, nullable=False)
 
     plc = relationship("PLC", back_populates="tags")
+
+    __table_args__ = (
+        UniqueConstraint("name", "plc_id", name="uq_tag_name_per_plc"),  # Prevent duplicate tag names per PLC
+    )
 
 class InfluxConfig(Base):
     __tablename__ = "influx_config"

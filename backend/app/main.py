@@ -1,20 +1,18 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-import os
+from typing import List
 from fastapi import FastAPI, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .db import SessionLocal, engine, Base
+from fastapi.middleware.cors import CORSMiddleware
+import os
+from dotenv import load_dotenv
 
-# Create tables (for dev only; use migrations in production)
+load_dotenv()
+
 Base.metadata.create_all(bind=engine)
 
-# Initialize FastAPI
 app = FastAPI(title="PLC Poller Config API")
 
-# Configure CORS (origins from env var or default)
 origins = [os.getenv("CORS_ORIGIN", "http://localhost:3000")]
 app.add_middleware(
     CORSMiddleware,
@@ -24,8 +22,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dependency
-
 def get_db():
     db = SessionLocal()
     try:
@@ -33,7 +29,6 @@ def get_db():
     finally:
         db.close()
 
-# Root
 @app.get("/", tags=["Root"])
 def read_root():
     return {"message": "Welcome to the PLC Poller Config API"}
@@ -46,7 +41,7 @@ def create_plc(plc: schemas.PLCCreate, db: Session = Depends(get_db)):
     new = crud.create_plc(db, plc)
     return new
 
-@app.get("/plcs/", response_model=list[schemas.PLC], tags=["PLC"])
+@app.get("/plcs/", response_model=List[schemas.PLC], tags=["PLC"])
 def read_plcs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_plcs(db, skip=skip, limit=limit)
 
@@ -72,7 +67,24 @@ def delete_plc(plc_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="PLC not found")
     crud.delete_plc(db, plc)
 
-# Influx Config
+# --- Add Tag endpoints here ---
+
+@app.post("/plcs/{plc_id}/tags/", response_model=schemas.Tag, status_code=201, tags=["Tag"])
+def create_tag_for_plc(plc_id: int, tag: schemas.TagCreate, db: Session = Depends(get_db)):
+    plc = crud.get_plc(db, plc_id)
+    if not plc:
+        raise HTTPException(status_code=404, detail="PLC not found")
+    new_tag = crud.create_tag(db, tag, plc_id)
+    return new_tag
+
+@app.get("/plcs/{plc_id}/tags/", response_model=List[schemas.Tag], tags=["Tag"])
+def read_tags_for_plc(plc_id: int, db: Session = Depends(get_db)):
+    plc = crud.get_plc(db, plc_id)
+    if not plc:
+        raise HTTPException(status_code=404, detail="PLC not found")
+    return crud.get_tags_by_plc(db, plc_id)
+
+# Influx Config endpoints
 @app.get("/influx", response_model=schemas.InfluxConfig, tags=["Influx"])
 def get_influx(db: Session = Depends(get_db)):
     cfg = crud.get_influx_config(db)
