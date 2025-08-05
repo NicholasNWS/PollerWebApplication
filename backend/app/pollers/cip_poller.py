@@ -1,3 +1,4 @@
+import random
 import time
 import logging
 from pycomm3 import LogixDriver
