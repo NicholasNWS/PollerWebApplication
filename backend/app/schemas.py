@@ -4,8 +4,7 @@ from typing import List, Optional
 class PLCBase(BaseModel):
     name: str
     ip_address: str
-    protocol: str = Field(..., regex="^(modbus|cip)$")
-    tags: List[str]
+    protocol: str = Field(..., pattern="^(modbus|cip)$")
     active: bool = True
 
 class PLCCreate(PLCBase):
@@ -18,7 +17,7 @@ class PLCUpdate(BaseModel):
     tags: Optional[List[str]]
     active: Optional[bool]
 
-class PLC(PCLBase):
+class PLC(PLCBase):
     id: int
     class Config:
         orm_mode = True

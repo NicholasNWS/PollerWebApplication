@@ -1,14 +1,24 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .db import SessionLocal, engine, Base
 
-# Create tables
+# Create tables if not exist
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="PLC Poller Config API")
 
-# Dependency
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # React app URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Dependency for DB session
 def get_db():
     db = SessionLocal()
     try:
@@ -16,13 +26,19 @@ def get_db():
     finally:
         db.close()
 
-# PLC Routes
-@app.post("/plcs/", response_model=schemas.PLC)
+# Root endpoint (avoid 404 on "/")
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the PLC Poller Config API"}
+
+# PLC endpoints
+@app.post("/plcs/", response_model=list[schemas.PLC])
 def create_plc(plc: schemas.PLCCreate, db: Session = Depends(get_db)):
     db_plc = crud.get_plc_by_name(db, name=plc.name)
     if db_plc:
         raise HTTPException(status_code=400, detail="PLC already registered")
-    return crud.create_plc(db, plc)
+    crud.create_plc(db, plc)
+    return crud.get_plcs(db)
 
 @app.get("/plcs/", response_model=list[schemas.PLC])
 def read_plcs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -50,7 +66,7 @@ def delete_plc(plc_id: int, db: Session = Depends(get_db)):
     crud.delete_plc(db, db_plc)
     return {"detail": "Deleted"}
 
-# Influx Config
+# Influx Config endpoints
 @app.get("/influx", response_model=schemas.InfluxConfig)
 def get_influx(db: Session = Depends(get_db)):
     cfg = crud.get_influx_config(db)

@@ -14,13 +14,25 @@ def create_plc(db: Session, plc: schemas.PLCCreate):
     db_plc = models.PLC(
         name=plc.name,
         ip_address=plc.ip_address,
-        protocol=plc.protocol,
-        tags=plc.tags,
-        active=plc.active
+        port=plc.port
     )
     db.add(db_plc)
     db.commit()
     db.refresh(db_plc)
+
+    # Add tags
+    for tag in plc.tags:
+        db_tag = models.Tag(
+            name=tag.name,
+            address=tag.address,
+            function_code=tag.function_code,
+            unit_id=tag.unit_id,
+            plc_id=db_plc.id
+        )
+        db.add(db_tag)
+    db.commit()
+    db.refresh(db_plc)  # Refresh to include tags if needed
+
     return db_plc
 
 def update_plc(db: Session, db_plc: models.PLC, updates: schemas.PLCUpdate):
@@ -33,23 +45,3 @@ def update_plc(db: Session, db_plc: models.PLC, updates: schemas.PLCUpdate):
 def delete_plc(db: Session, db_plc: models.PLC):
     db.delete(db_plc)
     db.commit()
-    return None
-
-# InfluxConfig CRUD
-
-def get_influx_config(db: Session):
-    return db.query(models.InfluxConfig).first()
-
-def create_influx_config(db: Session, cfg: schemas.InfluxConfigBase):
-    db_cfg = models.InfluxConfig(**cfg.dict())
-    db.add(db_cfg)
-    db.commit()
-    db.refresh(db_cfg)
-    return db_cfg
-
-def update_influx_config(db: Session, db_cfg: models.InfluxConfig, updates: schemas.InfluxConfigBase):
-    for field, value in updates.dict(exclude_unset=True).items():
-        setattr(db_cfg, field, value)
-    db.commit()
-    db.refresh(db_cfg)
-    return db_cfg
