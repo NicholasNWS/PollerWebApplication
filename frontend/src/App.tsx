@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import PlcList from './pages/PlcList'
-import PlcForm from './pages/PlcForm'
+import PlcForm from './components/PlcForm'
 import InfluxConfig from './pages/InfluxConfig'
 import Dashboard from './pages/Dashboard'
 
